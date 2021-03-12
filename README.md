@@ -34,6 +34,7 @@ Unity2020.2.1fでのみ動作確認をしています。
 
 ## ZooMoviUnityProjectを改善する手順
 OSSとしてZooMoviUnityProjectに機能を追加・整理などしてくださる方を歓迎しています。
+
 ZooMoviUnityProjectを編集する際の手順は以下の通りになります。
 1. このリポジトリを「fork」します。
 2. main以外のブランチを作成し、そこで作業をしてコミット・プッシュします。
