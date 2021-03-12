@@ -32,6 +32,13 @@ Unity2020.2.1fでのみ動作確認をしています。
 1. 「index.html」の83, 85, 86, 87行目の「*****」の部分をビルド時に設定した名前に変更してください。
 1. 「Web Server for Chrome」や「GitHub Pages」上でアプリを開くことにより、ずーむびを使用することができます。
 
+## ZooMoviUnityProjectを改善する手順
+OSSとしてZooMoviUnityProjectに機能を追加・整理などしてくださる方を歓迎しています。
+ZooMoviUnityProjectを編集する際の手順は以下の通りになります。
+1. このリポジトリを「fork」します。
+2. main以外のブランチを作成し、そこで作業をしてコミット・プッシュします。
+3. mainブランチへプルリクエストを作成してください。
+
 ## 連絡先
 不具合や質問などがある場合には、以下のTwitterアカウントへご連絡していただければ幸いです。
 https://twitter.com/aguroshou
