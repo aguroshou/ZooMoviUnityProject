@@ -1,25 +1,371 @@
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
+    <script src="//cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.8.3/dist/ffmpeg.min.js"></script>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity WebGL Player | VRMAppWebGLBuildSample</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <script src="TemplateData/UnityProgress.js"></script>
-    <script src="Build/UnityLoader.js"></script>
-    <script>
-      var unityInstance = UnityLoader.instantiate("unityContainer", "Build/docs.json", {onProgress: UnityProgress});
-    </script>
+    <style type="text/css">
+        body {
+            background: #999999;
+        }
+
+        .title {
+            margin: 10px auto;
+            text-align: center;
+        }
+
+        .movie {
+            text-align: center;
+            margin: 10px auto;
+        }
+
+            .movie video {
+                margin: 0px auto;
+                width: 320px;
+                height: 180px;
+            }
+
+        .center {
+            text-align: center;
+        }
+
+            .center button {
+                font-size: 24px;
+            }
+
+        #myVideo {
+            display: block;
+        }
+        #output-video { display: none; }   /* 非表示 */
+        #center { display: none; }   /* 非表示 */
+        #uploader { display: none; }   /* 非表示 */
+        #message { display: none; }   /* 非表示 */
+        #log { display: none; }   /* 非表示 */
+        #myVideo { display: none; }   /* 非表示 */
+        #db_status { display: none; }   /* 非表示 */
+        #error_status { display: none; }   /* 非表示 */
+        #input_message { display: none; }   /* 非表示 */
+        #hide_id { display: none; }   /* 非表示 */
+    </style>
+
   </head>
   <body>
-    <div class="webgl-content">
-      <div id="unityContainer" style="width: 960px; height: 600px"></div>
-      <div class="footer">
-        <div class="webgl-logo"></div>
-        <div class="fullscreen" onclick="unityInstance.SetFullscreen(1)"></div>
-        <div class="title">VRMAppWebGLBuildSample</div>
+    <h3 id="hide_id">Upload a video to transcode to mp4 (x264) and play!</h3>
+    <video id="output-video" controls muted autoplay></video><br />
+    <br>
+    <input type="file" id="uploader">
+    <p id="message"></p>
+    <br>
+    <div>
+      <textarea id='log' rows=30 cols=100 autofocus></textarea>
+    </div>
+
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-mobile-warning">
+        WebGL builds are not supported on mobile devices.
+      </div>
+      <div id="unity-footer">
+        <div id="unity-build-title"></div>
       </div>
     </div>
+    <script>
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/BuildWebGlZoomMovieMaker2020Ver35.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/BuildWebGlZoomMovieMaker2020Ver35.data.unityweb",
+        frameworkUrl: buildUrl + "/BuildWebGlZoomMovieMaker2020Ver35.framework.js.unityweb",
+        codeUrl: buildUrl + "/BuildWebGlZoomMovieMaker2020Ver35.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Aguro",
+        productName: "ZooMovi",
+        productVersion: "1.0.0",
+      };
+
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var mobileWarning = document.querySelector("#unity-mobile-warning");
+
+      config.devicePixelRatio = 1;
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        container.className = "unity-mobile";
+        config.devicePixelRatio = 1;
+        mobileWarning.style.display = "block";
+        setTimeout(() => {
+          mobileWarning.style.display = "none";
+        }, 5000);
+      } else {
+        canvas.style.width = "1280px";
+        canvas.style.height = "720px";
+      }
+      loadingBar.style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+          loadingBar.style.display = "none";
+          // fullscreenButton.onclick = () => {
+          //   unityInstance.SetFullscreen(1);
+          // };
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+    </script>
   </body>
+  <body>
+    <div class="title" id="hide_id">index DBの使用テスト</div>
+    <div class="center" id="hide_id"><a href="./deleteIndexedDB.html">indexed DB を消去する</a></div>
+    <div class="movie"><video id="myVideo"></video></div>
+    <div class="center" id="hide_id"><button>play/pause</button></div>
+    <div class="center" id="db_status">haven't executed<br></div>
+    <div class="center" id="error_status"></div>
+
+    <input type="text" id="input_message" value="">
+
+    <script type="text/javascript">
+        (function () {
+            var version = 1;
+            var movie_url = './testaa.avi';
+            //var
+            btn = document.querySelector('button');
+            var video = document.querySelector('#myVideo');
+            var db_status = document.querySelector('#db_status');
+            var error_status = document.querySelector('#error_status');
+
+            var is_video_loaded = false;
+            var is_db_updated = false;
+
+            //var
+            togglePlay = function () {
+                if (video.paused) {
+                  is_video_loaded = false;
+                    if (!is_video_loaded) {
+                        try{
+                            //1.indexedDBを開く
+                            //var
+                            idbReq = indexedDB.open("/idbfs");
+                            //var idbReq = indexedDB.open("test", version);
+                            db_status.innerText = "opening indexedDB";
+                        } catch (e) {
+                            error_status.innerText = "IndexedDB is not implemented";
+                            return;
+                        }
+
+                        //2.DBの新規作成時、またはバージョン変更時に実行するコード
+                        idbReq.onupgradeneeded = function (event) {
+                            var db = event.target.result;
+                            db_status.innerText = "update database";
+                            //過去にDBを作成したことがなければ作成
+                            if (event.oldVersion < 1 || (event.oldVersion & 0x7fffffffffffffff) < 1) {
+                                console.log("create database");
+                                event.target.result.createObjectStore("video", { keyPath: "video_id" });
+                                db_status.innerHTML += "<br> database created"
+                            }
+
+                            is_db_updated = true;
+
+                            //onupdateneededで呼ばれたtransactionが終了してから処理を行う（既存のtransactionが新規のtransactionをブロックし合う場合がある）
+                            event.target.transaction.oncomplete = function () {
+                                var xhr = new XMLHttpRequest();
+                                xhr.open('GET', movie_url, true);
+                                xhr.responseType = 'arraybuffer';
+                                //IndexedDBを使用した場合との時間差を明確にするため、XMLHttpRequestのキャッシュを無効化（本来は必要なし）
+                                xhr.setRequestHeader('Pragma', 'no-cache');
+                                xhr.setRequestHeader('Cache-Control', 'no-cache');
+                                xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
+
+                                xhr.onload = function (e) {
+                                    db_status.innerText = "movie is loaded"
+                                    try {
+                                        var transaction = db.transaction("video", "readwrite");
+                                        videoStore = transaction.objectStore("video");
+                                        var arraybuffer = e.target.response;
+                                        //データの追加
+                                        videoStore.put({ video_id: "1", video: arraybuffer });
+
+                                        var blob = new Blob([arraybuffer], { type: 'video/avi' });
+                                        var URL = window.URL || window.webkitURL;
+                                        video.src = URL.createObjectURL(blob);
+
+                                        db_status.innerText = "db is updated";
+                                        console.log("updated indexedDB");
+                                    } catch (e) {
+                                        error_status.innerText = e.message;
+                                    }
+                                }
+                                xhr.send();
+                            }
+                        }
+
+                        idbReq.onsuccess = function (event) {
+                            if (!is_db_updated) {
+                                db_status.innerText = "opened DB";
+                                var db = event.target.result;
+                                //"video"オブジェクトストアを読みreadonly権限付きで使用することを宣言
+                                //var transaction = db.transaction("video", "readonly");
+                                var transaction = db.transaction("FILE_DATA", "readonly");
+                                //オブジェクトストアの取り出し
+                                //var videoStore = transaction.objectStore("video");
+                                var videoStore = transaction.objectStore("FILE_DATA");
+                                //オブジェクトストアへ取り出しリクエスト
+                                //var getReq = videoStore.get("1");
+
+                                //動画のパスを手動で入力する
+                                //var input_message = document.getElementById("input_message").value;
+
+                                var getReq = videoStore.get(input_message);
+
+                                //videoオブジェクトストアからのデータの取り出し
+                                getReq.onsuccess = function (event) {
+                                    try {
+                                        //var無しでグローバル変数にする
+                                        blob = new Blob([event.target.result.contents], { type: 'video/avi' });
+                                        transcodetest();
+                                        var URL = window.URL || window.webkitURL;
+                                        video.src = window.URL.createObjectURL(blob);
+                                        //db_status.innerText = "db is opened, and success data load";
+                                    } catch (e) {
+                                        error_status.innerText = e.message;
+                                    }
+                                }
+                                getReq.onerror = function (event) {
+                                    db_status.innerText = "db is opened, but failed data load"
+                                }
+                            }
+                        }
+
+                        idbReq.onerror = function (event) {
+                            db_status.innerText = "failed db open"
+                        }
+
+                        is_video_loaded = true;
+                    }
+                    //video.play();
+                } else {
+                    //video.pause();
+                }
+            };
+            btn.addEventListener('click', togglePlay);
+        })();
+
+
+
+
+            var txt = document.getElementById('log');
+    const {
+      createFFmpeg, fetchFile
+    } = FFmpeg;
+    const ffmpeg = createFFmpeg({
+      log: true,
+      logger: ({
+        message
+      }) => {
+        txt.value += "\n" + message;
+      }
+    });
+
+    const transcode = async ({
+      target: {
+        files
+      }
+    }) => {
+      const message = document.getElementById('message');
+      const {
+        name
+      } = files[0];
+      message.innerHTML = 'Loading ffmpeg-core.js';
+      await ffmpeg.load();
+      await ffmpeg.write(name, files[0]);
+      message.innerHTML = 'Start transcoding';
+      await ffmpeg.transcode(name, 'output.mp4');
+      message.innerHTML = 'Transcoding completed';
+      const data = ffmpeg.read('output.mp4');
+      ffmpeg.remove('output.mp4');
+
+      const video = document.getElementById('output-video');
+      video.src = URL.createObjectURL(new Blob([data.buffer], {
+        type: 'video/mp4'
+      }));
+
+
+    }
+    const transcodetest = async () => {
+      const message = document.getElementById('message');
+      message.innerHTML = 'Loading ffmpeg-core.js';
+      await ffmpeg.load();
+
+      //mp4の動画が生成されるプログラム
+      await ffmpeg.write('VideoWriterExample_output.avi', blob);
+      message.innerHTML = 'Start transcoding';
+      await ffmpeg.transcode('VideoWriterExample_output.avi', 'output.mp4');
+      message.innerHTML = 'Transcoding completed';
+      const data = ffmpeg.read('output.mp4');
+      ffmpeg.remove('output.mp4');
+
+      const video = document.getElementById('output-video');
+      video.src = URL.createObjectURL(new Blob([data.buffer], {
+        type: 'video/mp4'
+      }));
+      const a = document.createElement('a');
+      a.href = video.src;
+      a.download = 'movie.mp4';
+
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      is_video_loaded = false;
+    }
+
+    const elm = document.getElementById('uploader');
+    elm.addEventListener('change', transcode);
+
+  function FfmpegMethod(parameter) {
+    console.log(parameter.callbackMoviePathName)
+    input_message = parameter.callbackMoviePathName;
+    //togglePlay;
+    //btn.addEventListener('click', togglePlay);
+    //window.addEventListener('mousemove', togglePlay);
+
+    setTimeout('btn.click();', 2000);
+
+    //idbReq.onsuccess;
+    // C#から指定されていたGameObject名とメソッド名を使ってコールバック処理を行う
+    //unityInstance.SendMessage(parameter.callbackGameObjectName, parameter.callbackFunctionName)
+  }
+
+  function recieveMessage(event) {
+  var data = JSON.parse(event.detail)
+  var methodName = data.methodName
+  var parameter = data.parameter
+    try {
+      parameter = JSON.parse(parameter)
+    } catch (e) {
+      parameter = null
+    }
+    // C#から指定されているメソッドを呼び出しparameterを渡す
+    eval(`${methodName}(parameter)`)
+  }
+
+  // unityMessageというCustomEventを受け取る
+  window.addEventListener('unityMessage', recieveMessage, false)
+  </script>
+</body>
 </html>
