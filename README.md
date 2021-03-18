@@ -7,7 +7,7 @@ UnityのWebGLビルドだけでは.mp4形式の動画を作成することはで
 ## ずーむび アプリ紹介
 こちらがZooMoviUnityProjectをWebGLでビルドしたアプリになります。
 
-https://aguroshou.github.io/ZoomVirtualBackgroundMovieMaker/
+https://aguroshou.github.io/ZooMoviUnityProject/
 
 ## 使用方法
 #### OpenCV for Unityのアセット
